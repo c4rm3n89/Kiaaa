@@ -1,0 +1,169 @@
+import sys
+import shlex, subprocess
+import os
+import time
+from time import sleep
+from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QPushButton, QLabel, QMessageBox
+from PyQt5 import uic
+
+class ISO(QDialog):
+ def __init__(self):
+  QDialog.__init__(self)
+  uic.loadUi("seleccioniso.ui", self)
+  self.setWindowTitle("ISO")
+  self.boton.clicked.connect(self.getItem)
+  
+ def getItem(self):
+  isoactual = self.todosiso.currentText()
+  self.labeliso.setText("Iso actual: " + isoactual)
+  DETECTAR()
+  RESET()
+  iso_a_camara = "gphoto2 --set-config /main/imagsettings/iso=" + str(isoactual)
+  """arg_iso = shlex.split(iso_a_camara)
+  subprocess.call(arg_iso)"""
+  os.system(iso_a_camara)
+  self.etiqueta = QLabel(self)
+  
+class TIMELAPSE(QDialog):
+ def __init__(self):
+  QDialog.__init__(self)
+  uic.loadUi("timelapse.ui", self)
+  self.setWindowTitle("CONFIGURAR TIMELAPSE")
+  global capturas, fotos, TLENABLE, TLPAUSA
+  TLENABLE = 1
+  TLPAUSA = 0
+  capturas = 10
+  fotos = 5
+  
+  #SliderHorizontalcaptura
+  self.labelHorizontalcaptura.setText("Tiempo entre capturas: 10")
+  self.horizontalSlidercaptura.setMinimum(0)
+  self.horizontalSlidercaptura.setMaximum(90)
+  self.horizontalSlidercaptura.setSingleStep(1)
+  self.horizontalSlidercaptura.setValue(10)
+  self.horizontalSlidercaptura.valueChanged.connect(self.getValueHorizontalcaptura)
+  
+  #SliderHorizontalfotos
+  self.labelHorizontalfotos.setText("Número de fotos: 1")
+  self.horizontalSliderfotos.setMinimum(1)
+  self.horizontalSliderfotos.setMaximum(720)
+  self.horizontalSliderfotos.setSingleStep(1)
+  self.horizontalSliderfotos.setValue(10)
+  self.horizontalSliderfotos.valueChanged.connect(self.getValueHorizontalfotos)
+  
+  #Pulsarelboton
+  self.aceptartimelapse.clicked.connect(self.AceptarTimelapse)
+  
+ def getValueHorizontalcaptura(self):
+  capturas = self.horizontalSlidercaptura.value()
+  self.labelHorizontalcaptura.setText("Tiempo entre capturas: " + str(capturas))
+  
+ def getValueHorizontalfotos(self):
+  fotos = self.horizontalSliderfotos.value()
+  self.labelHorizontalfotos.setText("Número de fotos: " + str(fotos))
+  
+ def AceptarTimelapse (self):
+  self.close()
+  
+class COMENZAR (QDialog):
+ def __init__(self):
+  QDialog.__init__(self)
+  uic.loadUi("aplicacion.ui", self)
+  self.setWindowTitle("TIMELAPSE")
+  self.botoncomenzar.clicked.connect(self.ejecutarTL)
+  self.botonconfigurar.clicked.connect(self.configurarTL)
+  
+ def ejecutarTL(self):
+  if TLENABLE == 1:
+      if TLPAUSA == 1:
+          TLPAUSA = 0
+          self.botoncomenzar.setText("Pausar")
+          capturas_auxiliar = capturas
+          fotos_auxiliar = fotos_pausa
+          while fotos_auxiliar >= 0:
+              self.botoncomenzar.clicked.connect(self.pausarTL)
+              comando = "gphoto2 --capture-image"
+              os.system(comando)
+              time.sleep(capturas_auxiliar)
+              fotos_auxiliar = fotos_auxiliar - 1
+              self.disparos.setText("Disparos restantes: " + str(fotos_auxiliar))
+          self.close()
+          
+      else:
+          self.botoncomenzar.setText("Pausar")
+          capturas_auxiliar = capturas
+          fotos_auxiliar = fotos
+          while fotos_auxiliar >= 0:
+              self.botoncomenzar.clicked.connect(self.pausarTL)
+              comando = "gphoto2 --capture-image"
+              os.system(comando)
+              time.sleep(capturas_auxiliar)
+              fotos_auxiliar = fotos_auxiliar - 1
+              self.disparos.setText("Disparos restantes: " + str(fotos_auxiliar))
+          self.close() 
+		  
+  else:
+          self.close()
+	 #mensaje_error_fotos = QMessageBox.question(self, "Configurar...", 'Introduzca los parámetros de entrada en "CONFIGURAR TIMELAPSE"', QMessageBox.Ok)
+  
+ def pausarTL(self):
+  global fotos_pausa
+  TLPAUSA = 1
+  fotos_pausa = fotos_auxiliar
+  self.botoncomenzar.setText("Continuar")
+  
+  
+ def configurarTL(self):
+  self.close()
+
+class AVTV (QDialog):
+ def __init__(self):
+  QDialog.__init__(self)
+  uic.loadUi("avtv.ui", self)
+  self.setWindowTitle("Apertura y Tiempo de exposición")
+  
+class Ventana(QMainWindow):
+ def __init__(self):
+  QMainWindow.__init__(self)
+  uic.loadUi("MainWindow.ui", self)
+  self.setWindowTitle("PiLapse 1.0")
+  self.iso = ISO()
+  self.timelapse = TIMELAPSE()
+  self.comenzar = COMENZAR()
+  self.avtv = AVTV()
+  self.botoniso.clicked.connect(self.abrirDialogo)
+  self.botontimelapse.clicked.connect(self.abrirtimelapse)
+  self.botoncomenzar.clicked.connect(self.abrircomenzar)
+  self.botonpriorytime.clicked.connect(self.abriravtv)
+  
+ def abrirDialogo(self):
+  self.iso.exec_()
+  
+ def abrirtimelapse(self):
+  self.timelapse.exec_()
+  
+ def abrircomenzar(self):
+  self.comenzar.exec_()
+  
+ def abriravtv(self):
+  self.avtv.exec_()
+
+def DETECTAR():
+  global usb
+  detecta_camara = sub.check_output(['gphoto2', '--auto-detect'])
+  if detecta_camara == None:
+      sys.exit(2)
+  usb = detecta_camara.split(":")
+  if len(usb) < 2:
+      sys.exit(2)
+  else:
+      usb = usb[1].strip().replace(",","/")
+      return "/dev/bus/usb/" + usb
+
+def RESET():
+	sub.call(["./usbreset", usb]) 
+	
+app = QApplication(sys.argv)
+ventana = Ventana()
+ventana.show()
+app.exec_()
